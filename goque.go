@@ -1,6 +1,7 @@
 package goque
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -169,4 +170,20 @@ func (q *Queue[T]) Stop() {
 	q.wait()
 
 	q.in <- qVal[T]{}
+}
+
+// Wait waits for the queue to have 0 items left
+func (q *Queue[T]) Wait() {
+	for q.Len() != 0 {
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// WaitAndStop waits for the queue to have 0 items left, then runs Stop
+func (q *Queue[T]) WaitAndStop() {
+	for q.Len() != 0 {
+		fmt.Println(q.Len())
+		time.Sleep(10 * time.Millisecond)
+	}
+	q.Stop()
 }
