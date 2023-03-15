@@ -4,17 +4,35 @@ import (
 	"time"
 )
 
-// const queueSize uint16 = 65535
-const queueSize uint8 = 255
+// 32 bit limit
+// const queueSize uintptr = 4294967295
+
+// 16 bit limit
+const queueSize uintptr = 65535
+
+//? test1: avr: 4.5s, min: 4.2s, max: 4.9s
+
+// 8 bit limit
+// const queueSize uint8 = 255
+
+type queuePos struct {
+	mode uint8
+
+	start16 *uint16
+	end16 *uint16
+
+	start8 *uint16
+	end8 *uint16
+}
 
 type Queue[T any] struct {
-	start *uint8
-	end *uint8
+	start *uint16
+	end *uint16
 	size *uintptr
 	rmSize *uintptr
 
-	queue *[uint32(queueSize)+1]qVal[T]
-	overflow *[]qVal[T]
+	queue *[queueSize+1]T
+	overflow *[]T
 	null T
 
 	in chan qVal[T]
@@ -27,13 +45,13 @@ type qVal[T any] struct {
 }
 
 func New[T any]() *Queue[T] {
-	start := uint8(0)
-	end := uint8(0)
+	start := uint16(0)
+	end := uint16(0)
 	size := uintptr(0)
 	rmSize := uintptr(0)
 
-	queue := [uint32(queueSize)+1]qVal[T]{}
-	overflow := []qVal[T]{}
+	queue := [queueSize+1]T{}
+	overflow := []T{}
 
 	in := make(chan qVal[T])
 	fixing := false
@@ -55,11 +73,11 @@ func New[T any]() *Queue[T] {
 		for {
 			inp := <-in
 			if inp.mode == 1 { // Add
-				if size > uintptr(queueSize) {
-					overflow = append(overflow, inp)
+				if size > queueSize {
+					overflow = append(overflow, inp.val)
 					size++
 				}else{
-					queue[end] = inp
+					queue[end] = inp.val
 					end++
 					size++
 				}
@@ -75,6 +93,8 @@ func New[T any]() *Queue[T] {
 				size--
 				rmSize--
 				fixing = false
+			}else{ // Stop
+				break
 			}
 		}
 	}()
@@ -82,14 +102,14 @@ func New[T any]() *Queue[T] {
 	return &q
 }
 
-// wait will try to wait and check again if the queue reports empty
+// wait will try to wait and check again if the queue reports empty, but may still be adding items
 //
 // @return bool
 //
 // true = finished
 //
 // false = timeout
-func (q *Queue[T]) wait(value T) bool {
+func (q *Queue[T]) wait() bool {
 	for *q.fixing {
 		time.Sleep(10 * time.Nanosecond)
 	}
@@ -111,28 +131,15 @@ func (q *Queue[T]) wait(value T) bool {
 	return true
 }
 
+// Add adds an item to the queue
 func (q *Queue[T]) Add(value T){
 	q.in <- qVal[T]{1, value}
 }
 
+// Next grabs the next item from the queue, and removes it
 func (q *Queue[T]) Next() T {
-	// if empty, try to wait and check again
-	for *q.fixing {
-		time.Sleep(10 * time.Nanosecond)
-	}
-
-	if *q.size - *q.rmSize == 0 {
-		loops := 100000
-		for *q.fixing || (*q.size - *q.rmSize == 0 && *q.start == *q.end && loops > 0) {
-			if !*q.fixing {
-				loops--
-			}
-			time.Sleep(10 * time.Nanosecond)
-		}
-
-		if *q.size - *q.rmSize == 0 {
-			return q.null
-		}
+	if !q.wait() {
+		return q.null
 	}
 
 	val := q.queue[*q.start]
@@ -141,24 +148,68 @@ func (q *Queue[T]) Next() T {
 
 	q.in <- qVal[T]{mode: 2}
 
-	return val.val
+	return val
+}
+
+// Peek peeks at the next item in the queue without removing it
+func (q *Queue[T]) Peek() T {
+	if !q.wait() {
+		return q.null
+	}
+
+	val := q.queue[*q.start]
+	return val
 }
 
 func (q *Queue[T]) Len() uintptr {
-	// if empty, try to wait and check again
-	for *q.fixing {
-		time.Sleep(10 * time.Nanosecond)
-	}
-
-	if *q.size - *q.rmSize == 0 {
-		loops := 100000
-		for *q.fixing || (*q.size - *q.rmSize == 0 && *q.start == *q.end && loops > 0) {
-			if !*q.fixing {
-				loops--
-			}
-			time.Sleep(10 * time.Nanosecond)
-		}
-	}
+	q.wait()
 
 	return *q.size - *q.rmSize
+}
+
+func (q *Queue[T]) Stop() {
+	q.wait()
+
+	q.in <- qVal[T]{}
+}
+
+
+func (q *queuePos) getStart() uint {
+	switch q.mode {
+	case 16:
+		return uint(*q.start16)
+	case 8:
+		return uint(*q.start8)
+	default:
+		return 0
+	}
+}
+
+func (q *queuePos) getEnd() uint {
+	switch q.mode {
+	case 16:
+		return uint(*q.end16)
+	case 8:
+		return uint(*q.end8)
+	default:
+		return 0
+	}
+}
+
+func (q *queuePos) addStart() {
+	switch q.mode {
+	case 16:
+		*q.start16++
+	case 8:
+		*q.start8++
+	}
+}
+
+func (q *queuePos) addEnd() {
+	switch q.mode {
+	case 16:
+		*q.end16++
+	case 8:
+		*q.end8++
+	}
 }

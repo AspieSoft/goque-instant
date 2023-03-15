@@ -31,7 +31,7 @@ func main(){
   fmt.Println(myQueue.Next()) // 2
   fmt.Println(myQueue.Next()) // 3
 
-  if myQueue.Empty() {
+  if myQueue.Len() == 0 {
     myQueue.Stop()
   }
 }
