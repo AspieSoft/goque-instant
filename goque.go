@@ -142,14 +142,12 @@ func New[T any]() *Queue[T] {
 						time.Sleep(100 * time.Nanosecond)
 
 						if memoryUsageAvailable < 500 && memoryUsageAvailable != 0 {
-							if memoryUsageAvailable < 250 {
-								reportLowMem()
-							}
-
 							loops := int(10000 - math.Floor((memoryUsageAvailable * 4500 / 300)))
 							time.Sleep(time.Duration(loops/10) * time.Nanosecond)
 
 							if memoryUsageAvailable < 300 || size > 24000000 {
+								reportLowMem()
+
 								timeout := time.Duration(math.Max(math.Min(float64(size / 10000), 5000), 1000))
 
 								if ConsoleLogsEnabled >= 2 && size % 1000 == 0 {
@@ -286,7 +284,7 @@ func (q *Queue[T]) WaitAndStop() {
 	q.in <- qVal[T]{}
 }
 
-// LowMem returns true if the module detected the system drop below 250mb,
+// LowMem returns true if the module detected the system drop below 300-500mb (depending on how large the queue is),
 // that may have been caused by a large queue size (> 2400000 objects)
 //
 // once low memory detection is triggered, it will only return as back to stable if memory usage goes back up to 1gb,
