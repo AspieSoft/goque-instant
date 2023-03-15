@@ -138,7 +138,6 @@ func New[T any]() *Queue[T] {
 					size++
 
 					// reduce high memory usage
-					// if size > 24000000 || (size > 4800000 && memoryUsageAvailable < 500) {
 					if size > 4800000 || (size > 2400000 && memoryUsageAvailable < 500) {
 						time.Sleep(100 * time.Nanosecond)
 
@@ -178,6 +177,8 @@ func New[T any]() *Queue[T] {
 					overflow = overflow[1:]
 					end++
 				}
+
+				//todo: https://go.dev/tour/concurrency/9
 
 				fixing = true
 				time.Sleep(10 * time.Nanosecond)
