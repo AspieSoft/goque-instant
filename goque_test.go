@@ -7,14 +7,20 @@ import (
 )
 
 func Test(t *testing.T){
+	ConsoleLogsEnabled = 2
+
+	// const testSize int = int(queueSize)*500
+	// const testSize int = int(queueSize)*256
+	// const testSize int = int(queueSize)*100
+	const testSize int = int(queueSize)*10
+	// const testSize int = int(queueSize)*3
+	// const testSize int = int(queueSize)+1
+
+	fmt.Println("Test Size:", testSize)
+
 	myq := New[func()]()
 
-	testSize := int(queueSize)*100
-	// testSize := int(queueSize)*10
-	// testSize := int(queueSize)*3
-	// testSize := int(queueSize)+1
-
-	res := [int(queueSize)*100]int{}
+	res := [testSize*2]int{}
 
 	go func(){
 		for i := 0; i < testSize; i++ {
@@ -23,6 +29,7 @@ func Test(t *testing.T){
 					res[i] = i
 				})
 			}(i)
+			time.Sleep(10 * time.Nanosecond)
 		}
 	}()
 
@@ -33,15 +40,21 @@ func Test(t *testing.T){
 					res[i] = i * -1
 				})
 			}(i)
+			time.Sleep(10 * time.Nanosecond)
 		}
 	}()
 
-	for i := 0; i < testSize*2; i++ {
-		fn := myq.Next()
-		go fn()
-	}
+	go func(){
+		for i := 0; i < testSize*2; i++ {
+			fn := myq.Next()
+			if fn != nil {
+				go fn()
+			}
+			time.Sleep(10 * time.Nanosecond)
+		}
+	}()
 
-	time.Sleep(100 * time.Millisecond)
+	myq.Wait()
 
 	hasPos := false
 	hasNeg := false
