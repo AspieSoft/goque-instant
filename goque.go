@@ -4,7 +4,6 @@ import (
 	"time"
 )
 
-
 // 32 bit limit
 // const queueSize uintptr = 4294967295
 
