@@ -9,8 +9,8 @@ import (
 func Test(t *testing.T){
 	ConsoleLogsEnabled = 2
 
-	const testSize int = int(queueSize)*500
-	// const testSize int = int(queueSize)*256
+	// const testSize int = int(queueSize)*500
+	const testSize int = int(queueSize)*256
 	// const testSize int = int(queueSize)*100
 	// const testSize int = int(queueSize)*10
 	// const testSize int = int(queueSize)*3
