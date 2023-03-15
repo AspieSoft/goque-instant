@@ -4,7 +4,7 @@
 
 A fast queue system for golang.
 
-This module avoids shifting values to deferent indexes of an array to different spots in memory.
+This module avoids shifting values to different indexes of an array and to different spots in memory.
 
 ## Installation
 
