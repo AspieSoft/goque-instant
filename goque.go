@@ -6,18 +6,18 @@ import (
 )
 
 // 32 bit limit
-// const queueSize uintptr = 4294967295
+// const queueSize uintptr = 4294967295+1
 
 // 16 bit limit
-const queueSize uintptr = 65535
+const queueSize uintptr = 65535+1
 
 // 8 bit limit
-// const queueSize uintptr = 255
+// const queueSize uintptr = 255+1
 
 type Queue[T any] struct {
 	data *queueData
 
-	queue *[queueSize+1]T
+	queue *[queueSize]T
 	overflow *[]T
 	null T
 
@@ -45,7 +45,7 @@ func New[T any]() *Queue[T] {
 	size := uintptr(0)
 	rmSize := uintptr(0)
 
-	queue := [queueSize+1]T{}
+	queue := [queueSize]T{}
 	overflow := []T{}
 
 	in := make(chan qVal[T])
@@ -70,7 +70,7 @@ func New[T any]() *Queue[T] {
 		for {
 			inp := <-in
 			if inp.mode == 1 { // Add
-				if size > queueSize {
+				if size >= queueSize {
 					overflow = append(overflow, inp.val)
 					size++
 				}else{
