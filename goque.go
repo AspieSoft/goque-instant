@@ -10,32 +10,24 @@ import (
 // 16 bit limit
 const queueSize uintptr = 65535
 
-//? test1: avr: 4.5s, min: 4.2s, max: 4.9s
-
 // 8 bit limit
-// const queueSize uint8 = 255
-
-type queuePos struct {
-	mode uint8
-
-	start16 *uint16
-	end16 *uint16
-
-	start8 *uint16
-	end8 *uint16
-}
+// const queueSize uintptr = 255
 
 type Queue[T any] struct {
-	start *uint16
-	end *uint16
-	size *uintptr
-	rmSize *uintptr
+	data *queueData
 
 	queue *[queueSize+1]T
 	overflow *[]T
 	null T
 
 	in chan qVal[T]
+}
+
+type queueData struct {
+	start *uint16
+	end *uint16
+	size *uintptr
+	rmSize *uintptr
 	fixing *bool
 }
 
@@ -44,9 +36,11 @@ type qVal[T any] struct {
 	val T
 }
 
+// New creates a new queue instance
 func New[T any]() *Queue[T] {
 	start := uint16(0)
 	end := uint16(0)
+
 	size := uintptr(0)
 	rmSize := uintptr(0)
 
@@ -57,16 +51,18 @@ func New[T any]() *Queue[T] {
 	fixing := false
 
 	q := Queue[T]{
-		start: &start,
-		end: &end,
-		size: &size,
-		rmSize: &rmSize,
+		data: &queueData{
+			start: &start,
+			end: &end,
+			size: &size,
+			rmSize: &rmSize,
+			fixing: &fixing,
+		},
 
 		queue: &queue,
 		overflow: &overflow,
 
 		in: in,
-		fixing: &fixing,
 	}
 
 	go func(){
@@ -110,20 +106,20 @@ func New[T any]() *Queue[T] {
 //
 // false = timeout
 func (q *Queue[T]) wait() bool {
-	for *q.fixing {
+	for *q.data.fixing {
 		time.Sleep(10 * time.Nanosecond)
 	}
 
-	if *q.size - *q.rmSize == 0 {
+	if *q.data.size - *q.data.rmSize == 0 {
 		loops := 100000
-		for *q.fixing || (*q.size - *q.rmSize == 0 && *q.start == *q.end && loops > 0) {
-			if !*q.fixing {
+		for *q.data.fixing || (*q.data.size - *q.data.rmSize == 0 && *q.data.start == *q.data.end && loops > 0) {
+			if !*q.data.fixing {
 				loops--
 			}
 			time.Sleep(10 * time.Nanosecond)
 		}
 
-		if *q.size - *q.rmSize == 0 {
+		if *q.data.size - *q.data.rmSize == 0 {
 			return false
 		}
 	}
@@ -142,9 +138,9 @@ func (q *Queue[T]) Next() T {
 		return q.null
 	}
 
-	val := q.queue[*q.start]
-	*q.start++
-	*q.rmSize++
+	val := q.queue[*q.data.start]
+	*q.data.start++
+	*q.data.rmSize++
 
 	q.in <- qVal[T]{mode: 2}
 
@@ -157,59 +153,20 @@ func (q *Queue[T]) Peek() T {
 		return q.null
 	}
 
-	val := q.queue[*q.start]
+	val := q.queue[*q.data.start]
 	return val
 }
 
+// Len returns the number of items in the queue
 func (q *Queue[T]) Len() uintptr {
 	q.wait()
 
-	return *q.size - *q.rmSize
+	return *q.data.size - *q.data.rmSize
 }
 
+// Stop stops the queue from running the loop that adds items concurrently through a channel
 func (q *Queue[T]) Stop() {
 	q.wait()
 
 	q.in <- qVal[T]{}
-}
-
-
-func (q *queuePos) getStart() uint {
-	switch q.mode {
-	case 16:
-		return uint(*q.start16)
-	case 8:
-		return uint(*q.start8)
-	default:
-		return 0
-	}
-}
-
-func (q *queuePos) getEnd() uint {
-	switch q.mode {
-	case 16:
-		return uint(*q.end16)
-	case 8:
-		return uint(*q.end8)
-	default:
-		return 0
-	}
-}
-
-func (q *queuePos) addStart() {
-	switch q.mode {
-	case 16:
-		*q.start16++
-	case 8:
-		*q.start8++
-	}
-}
-
-func (q *queuePos) addEnd() {
-	switch q.mode {
-	case 16:
-		*q.end16++
-	case 8:
-		*q.end8++
-	}
 }

@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+//? 3.5, max: 4.1
+
 func Test(t *testing.T){
 	myq := New[int]()
 
