@@ -7,14 +7,13 @@ import (
 )
 
 func Test(t *testing.T){
-	ConsoleLogsEnabled = 2
-
 	// const testSize int = int(queueSize)*500
-	const testSize int = int(queueSize)*256
+	// const testSize int = int(queueSize)*256
 	// const testSize int = int(queueSize)*100
-	// const testSize int = int(queueSize)*10
+	const testSize int = int(queueSize)*10
 	// const testSize int = int(queueSize)*3
 	// const testSize int = int(queueSize)+1
+	// const testSize int = 100
 
 	fmt.Println("Test Size:", testSize)
 
@@ -44,15 +43,17 @@ func Test(t *testing.T){
 		}
 	}()
 
-	go func(){
-		for i := 0; i < testSize*2; i++ {
-			fn := myq.Next()
-			if fn != nil {
-				go fn()
-			}
-			time.Sleep(10 * time.Nanosecond)
+	for i := 0; i < testSize*2; i++ {
+		fn := myq.Next(true)
+		if fn == nil {
+			i--
+			time.Sleep(100 * time.Nanosecond)
+			continue
 		}
-	}()
+		// go fn()
+		fn()
+		time.Sleep(10 * time.Nanosecond)
+	}
 
 	myq.Wait()
 
@@ -75,6 +76,4 @@ func Test(t *testing.T){
 	}
 
 	fmt.Println(hasPos, hasNeg)
-
-	myq.WaitAndStop()
 }
