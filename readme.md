@@ -10,8 +10,6 @@ This will reset the number to loop back to the front of the queue.
 When this happens, the queue is checked for an empty slot, and if unavailable will append to an overflow queue.
 The overflow queue will concurrently be added to the main queue when a new spot is available.
 
-Notice: This is not for objects where the order is important. It should maintain a consistant order, but objects are added to the queue concurrently, which could result in an offset queue order.
-
 ## Installation
 
 ```shell script
